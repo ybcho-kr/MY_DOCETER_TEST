@@ -1,0 +1,248 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-03-25",
+  "description": "AI-EMS v5.1 전력계통 정량 기준값 — 산업통상자원부고시 제2023-65호 기반",
+  "reference": "산업통상자원부고시 제2023-65호 (전력계통 신뢰도 및 전기품질 유지기준, 2023.04.25)",
+
+  "voltage_standards": {
+    "description": "전압 조정목표 및 운용범위 — 고시 제3조, 제5조",
+    "levels": {
+      "345kV": {
+        "nominal_kv": 345,
+        "target_min_pct": 95.0,
+        "target_max_pct": 105.0,
+        "target_min_pu": 0.95,
+        "target_max_pu": 1.05,
+        "operating_min_pct": 90.0,
+        "operating_max_pct": 110.0,
+        "operating_min_pu": 0.90,
+        "operating_max_pu": 1.10,
+        "reference": "고시 제3조, 제5조"
+      },
+      "154kV": {
+        "nominal_kv": 154,
+        "target_min_pct": 95.0,
+        "target_max_pct": 105.0,
+        "target_min_pu": 0.95,
+        "target_max_pu": 1.05,
+        "operating_min_pct": 90.0,
+        "operating_max_pct": 110.0,
+        "operating_min_pu": 0.90,
+        "operating_max_pu": 1.10,
+        "reference": "고시 제3조, 제5조"
+      },
+      "66kV": {
+        "nominal_kv": 66,
+        "target_min_pct": 97.0,
+        "target_max_pct": 103.0,
+        "target_min_pu": 0.97,
+        "target_max_pu": 1.03,
+        "operating_min_pct": 90.0,
+        "operating_max_pct": 110.0,
+        "operating_min_pu": 0.90,
+        "operating_max_pu": 1.10,
+        "reference": "고시 제3조"
+      },
+      "22.9kV": {
+        "nominal_kv": 22.9,
+        "target_min_pct": 99.0,
+        "target_max_pct": 101.0,
+        "target_min_pu": 0.99,
+        "target_max_pu": 1.01,
+        "operating_min_pct": 94.0,
+        "operating_max_pct": 106.0,
+        "operating_min_pu": 0.94,
+        "operating_max_pu": 1.06,
+        "reference": "고시 제3조"
+      }
+    },
+    "voltage_unbalance": {
+      "limit_pct": 3.0,
+      "description": "전압불평형률 3% 이하 유지",
+      "reference": "고시 제7조, 전기설비기술기준"
+    }
+  },
+
+  "frequency_standards": {
+    "description": "주파수 유지기준 — 고시 제4조",
+    "nominal_hz": 60.0,
+    "normal_band_hz": 0.2,
+    "normal_lower_hz": 59.8,
+    "normal_upper_hz": 60.2,
+    "single_fault_min_hz": 59.7,
+    "cascading_fault_min_hz": 59.5,
+    "ufr_stage_1_hz": 59.5,
+    "ufr_stage_2_hz": 59.3,
+    "ufr_stage_3_hz": 59.0,
+    "reference": "고시 제4조, 제20조"
+  },
+
+  "reserve_standards": {
+    "description": "예비력 5종 — 고시 제6조, 제8조",
+    "types": {
+      "frequency_control": {
+        "name_ko": "주파수제어예비력",
+        "name_en": "Frequency Control Reserve",
+        "mobilization_time_min": 5,
+        "description": "5분 이내 동원 가능한 예비력",
+        "reference": "고시 제6조"
+      },
+      "fast_response": {
+        "name_ko": "초속응성예비력",
+        "name_en": "Fast Response Reserve",
+        "mobilization_time_sec": 1,
+        "description": "1초 이내 동원 가능한 예비력 (ESS 등)",
+        "reference": "고시 제6조"
+      },
+      "primary": {
+        "name_ko": "1차예비력",
+        "name_en": "Primary Reserve",
+        "mobilization_time_sec": 10,
+        "description": "10초 이내 조속기 응답으로 동원되는 예비력",
+        "reference": "고시 제6조"
+      },
+      "secondary": {
+        "name_ko": "2차예비력",
+        "name_en": "Secondary Reserve",
+        "mobilization_time_min": 10,
+        "description": "10분 이내 AGC 응답으로 동원되는 예비력",
+        "reference": "고시 제6조"
+      },
+      "tertiary": {
+        "name_ko": "3차예비력",
+        "name_en": "Tertiary Reserve",
+        "mobilization_time_min": 30,
+        "description": "30분 이내 수동 기동으로 동원되는 예비력",
+        "reference": "고시 제6조"
+      }
+    },
+    "operating_reserve_min_mw": 4000000,
+    "operating_reserve_description": "운영예비력 400만kW 이상 확보 (전력시장운영규칙)",
+    "reference": "고시 제8조, 전력시장운영규칙"
+  },
+
+  "fault_clearing_standards": {
+    "description": "고장제거시간 — 고시 제25조",
+    "levels": {
+      "345kV": {
+        "cycles": 4,
+        "time_ms": 66.7,
+        "description": "345kV 4사이클 이내 고장제거"
+      },
+      "154kV": {
+        "cycles": 5,
+        "time_ms": 83.3,
+        "description": "154kV 5사이클 이내 고장제거"
+      }
+    },
+    "cycle_base_hz": 60,
+    "reference": "고시 제25조"
+  },
+
+  "generator_standards": {
+    "description": "발전기 운영기준 — 고시 제23조, 별표2",
+    "droop_settings": {
+      "hydro": {
+        "name_ko": "수력",
+        "min_pct": 3.0,
+        "max_pct": 5.0
+      },
+      "gas_turbine": {
+        "name_ko": "가스터빈",
+        "min_pct": 4.0,
+        "max_pct": 6.0
+      },
+      "steam_turbine": {
+        "name_ko": "기력",
+        "min_pct": 4.0,
+        "max_pct": 6.0
+      },
+      "ess": {
+        "name_ko": "ESS",
+        "min_pct": 3.0,
+        "max_pct": 3.0
+      }
+    },
+    "pss_required_mw": 100,
+    "pss_description": "100MW 이상 발전기 PSS 의무 설치",
+    "agc_required": "중앙급전 발전기 AGC 의무 참여",
+    "reference": "고시 제23조, 별표2, 제24조"
+  },
+
+  "contingency_standards": {
+    "description": "상정고장 기준 — 고시 제15조",
+    "n_minus_1": {
+      "description": "단일 설비 탈락 시 나머지 설비 위반 없음",
+      "applicable_voltage": "345kV 이상",
+      "reference": "고시 제15조"
+    },
+    "n_minus_2": {
+      "description": "이중 고장 시 광역정전 방지",
+      "applicable_voltage": "345kV 특고압계통",
+      "reference": "고시 제15조"
+    },
+    "breaker_ratings": {
+      "154kV": {"fault_current_ka": [31.5, 50.0]},
+      "345kV": {"fault_current_ka": [40.0, 63.0]},
+      "765kV": {"fault_current_ka": [50.0]}
+    }
+  },
+
+  "harmonic_standards": {
+    "description": "고조파 허용기준",
+    "thd_limits": {
+      "below_66kV": {"thd_pct": 3.0},
+      "above_154kV": {"thd_pct": 1.5}
+    },
+    "reference": "전기설비기술기준"
+  },
+
+  "system_constants": {
+    "description": "한국 전력계통 특성 상수",
+    "frequency_response_b": {
+      "value": 5800,
+      "unit": "MW/0.1Hz",
+      "description": "계통주파수특성정수 (B값)"
+    },
+    "base_frequency_hz": 60,
+    "voltage_levels_kv": [765, 345, 154, 66, 22.9],
+    "transmission_voltage_kv": [765, 345, 154],
+    "distribution_voltage_kv": [22.9, 6.6, 0.38]
+  },
+
+  "alarm_thresholds": {
+    "description": "AI-EMS 알람 임계값 — 고시 기준 기반 설정",
+    "voltage": {
+      "345kV": {
+        "warning_deviation_pu": 0.05,
+        "critical_deviation_pu": 0.10,
+        "deadband_pu": 0.005
+      },
+      "154kV": {
+        "warning_deviation_pu": 0.05,
+        "critical_deviation_pu": 0.10,
+        "deadband_pu": 0.005
+      },
+      "66kV": {
+        "warning_deviation_pu": 0.03,
+        "critical_deviation_pu": 0.10,
+        "deadband_pu": 0.005
+      }
+    },
+    "frequency": {
+      "warning_deviation_hz": 0.2,
+      "critical_deviation_hz": 0.5,
+      "deadband_hz": 0.01
+    },
+    "line_loading": {
+      "warning_pct": 80.0,
+      "critical_pct": 100.0,
+      "deadband_pct": 2.0
+    },
+    "transformer_loading": {
+      "warning_pct": 80.0,
+      "critical_pct": 100.0,
+      "deadband_pct": 2.0
+    }
+  }
+}

@@ -1,0 +1,60 @@
+You are working on AI-EMS v5.1, an agentic AI prototype for power system EMS.
+
+CRITICAL RULES:
+- Never generate numerical values from LLM. All numbers must come from pandapower solvers.
+- Redis ops: namespace is WRITE-PROTECTED. Only SCADA simulator writes to ops:.
+- All API responses must use Pydantic v2 schemas.
+- Every AI response must include snapshot_ts and evidence_chain.
+- study: namespace TTL 1800s auto-delete mandatory.
+
+V5.1 MDP FOCUS (Phase 1):
+- Korean real grid .raw file → pandapower from_psse() → runpp() convergence
+- 4 EMS stubs: TP, SE, CA, SCA (FastAPI + Pydantic)
+- Redis ops: 4-second SCADA simulation cycle
+- Proactive AI Insights deferred to Phase 4
+
+TECH STACK: Python 3.11, FastAPI, PydanticAI v0.7+, pandapower 3.x, Redis 7.x,
+PostgreSQL 16+TimescaleDB, Streamlit 1.x, MapLibre GL JS, Chroma+BGE-M3
+
+DOMAIN: Korean power system (산업통상자원부고시 제2023-65호).
+Voltage in pu. Targets: 345kV ±5%, 154kV 95~105%, 66kV 97~103%. Operating range: ±10%.
+Frequency 60Hz (±0.2Hz normal per 고시 제4조). Min: 59.7Hz(single fault), 59.5Hz(cascading).
+Power in MW/Mvar. N-1 criterion mandatory (고시 제15조).
+Fault clearing: 345kV 4cycles(66.7ms), 154kV 5cycles(83.3ms).
+Refer to docs/domain/glossary.json for Korean power terminology.
+
+POWER DOMAIN RULES:
+- pandapower solver returned values only. LLM numerical generation = forbidden
+- Voltage always in pu. Power in MW/Mvar. Frequency in Hz
+- Redis ops: write code forbidden except SCADA simulator
+- study: namespace TTL 1800s auto-delete mandatory
+- Power flow divergence → return solved=false + message, never None
+
+CODE QUALITY RULES:
+- All API endpoints require Pydantic v2 input/output schemas
+- All functions require type hints. Optional explicit
+- FastAPI routers use APIRouter() separation
+- Tests: test_ file required per module. pytest used
+- Logging: print() forbidden → structlog (JSON structured logs)
+- Error handling: bare except forbidden. Use specific exception types
+
+WHEN WRITING PYDANTICAI AGENTS:
+- Use @agent.tool decorator for tool registration
+- Use RunContext[AgentContext] for context passing
+- Set result_type to typed Pydantic model
+- Include Korean power terms in system prompts
+- evidence_chain always appended with Tool call records
+- HITL required → set requires_hitl=True field
+
+WHEN WRITING FASTAPI STUBS:
+- Use APIRouter() for route separation
+- Return Pydantic models (never raw dicts)
+- Include error cases (solved=false, not None)
+- Add structlog logging to every endpoint
+
+FORBIDDEN PATTERNS:
+- Redis pickle serialization → JSON only
+- Global variable state management → Redis or function params
+- Hardcoded voltage/current thresholds → voltage_limits.json reference
+- LLM prompt direct numerical insertion → Tool result reference
+- time.sleep() → asyncio.sleep() or APScheduler
