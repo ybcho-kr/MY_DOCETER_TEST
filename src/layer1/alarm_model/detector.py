@@ -10,9 +10,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 import pandapower as pp
+import structlog
 
 from src.shared.domain import get_frequency_limits, get_voltage_limits
 from src.shared.schemas.alarm import Alarm, AlarmSeverity, AlarmType
+
+logger = structlog.get_logger(__name__)
 
 
 def _utcnow() -> datetime:
@@ -28,14 +31,12 @@ class AlarmDetector:
 
     전압, 부하율, 주파수를 검사하여 한계치 위반 경보를 생성한다.
     Dead-band를 적용하여 미세 진동(chattering)을 방지한다.
-    """
 
-    #: 전압 dead-band (±0.005 pu) — 미세 변동 경보 억제
-    VOLTAGE_DEADBAND_PU: float = 0.005
-    #: 선로 부하율 dead-band (±2%) — 미세 변동 경보 억제
-    LOADING_DEADBAND_PCT: float = 2.0
-    #: 주파수 dead-band (±0.01 Hz) — 미세 변동 경보 억제
-    FREQUENCY_DEADBAND_HZ: float = 0.01
+    Dead-band 기준값은 하드코딩 금지 — 도메인 JSON에서 로드:
+      - voltage_limits.json의 alarm_thresholds.voltage.*.deadband_pu (전압)
+      - voltage_limits.json의 alarm_thresholds.line_loading.deadband_pct (부하율)
+      - frequency_limits.json의 alarm_thresholds.deadband_hz (주파수)
+    """
 
     def __init__(
         self,
@@ -50,6 +51,39 @@ class AlarmDetector:
         """
         self._vlim: dict[str, Any] = voltage_limits or get_voltage_limits()
         self._flim: dict[str, Any] = frequency_limits or get_frequency_limits()
+
+        # Dead-band 및 임계값을 도메인 JSON에서 로드 (하드코딩 금지 원칙 준수)
+        _valarm = self._vlim.get("alarm_thresholds", {})
+        _falarm = self._flim.get("alarm_thresholds", {})
+
+        #: 전압 dead-band (pu) — voltage_limits.json alarm_thresholds.voltage.345kV.deadband_pu
+        self.VOLTAGE_DEADBAND_PU: float = (
+            _valarm.get("voltage", {}).get("345kV", {}).get("deadband_pu", 0.005)
+        )
+        #: 선로 부하율 dead-band (%) — voltage_limits.json alarm_thresholds.line_loading.deadband_pct
+        self.LOADING_DEADBAND_PCT: float = (
+            _valarm.get("line_loading", {}).get("deadband_pct", 2.0)
+        )
+        #: 선로 부하율 WARNING 임계값 (%) — voltage_limits.json alarm_thresholds.line_loading.warning_pct
+        self.LOADING_WARNING_PCT: float = (
+            _valarm.get("line_loading", {}).get("warning_pct", 80.0)
+        )
+        #: 선로 부하율 CRITICAL 임계값 (%) — voltage_limits.json alarm_thresholds.line_loading.critical_pct
+        self.LOADING_CRITICAL_PCT: float = (
+            _valarm.get("line_loading", {}).get("critical_pct", 100.0)
+        )
+        #: 주파수 dead-band (Hz) — frequency_limits.json alarm_thresholds.deadband_hz
+        self.FREQUENCY_DEADBAND_HZ: float = (
+            _falarm.get("deadband_hz", 0.01)
+        )
+        #: 주파수 WARNING 편차 (Hz) — frequency_limits.json alarm_thresholds.warning_deviation_hz
+        self.FREQUENCY_WARNING_DEV_HZ: float = (
+            _falarm.get("warning_deviation_hz", 0.2)
+        )
+        #: 주파수 CRITICAL 편차 (Hz) — frequency_limits.json alarm_thresholds.critical_deviation_hz
+        self.FREQUENCY_CRITICAL_DEV_HZ: float = (
+            _falarm.get("critical_deviation_hz", 0.5)
+        )
 
     # ------------------------------------------------------------------
     # 전압 검사
@@ -143,8 +177,8 @@ class AlarmDetector:
             Alarm 또는 None (한계치 이내).
         """
         db = self.LOADING_DEADBAND_PCT
-        warning_threshold = 80.0
-        critical_threshold = 100.0
+        warning_threshold = self.LOADING_WARNING_PCT
+        critical_threshold = self.LOADING_CRITICAL_PCT
 
         if loading_pct >= critical_threshold + db:
             severity = AlarmSeverity.CRITICAL
@@ -196,16 +230,22 @@ class AlarmDetector:
         normal_lower: float = self._flim["normal_band"]["lower_hz"]  # 59.8
         normal_upper: float = self._flim["normal_band"]["upper_hz"]  # 60.2
         single_fault_min: float = self._flim["fault_limits"]["single_fault_min_hz"]  # 59.7
+        nominal_hz: float = self._flim.get("nominal_hz", 60.0)
         db = self.FREQUENCY_DEADBAND_HZ
+
+        # CRITICAL 상한 임계값: 공칭주파수 + critical_deviation_hz (기본 0.5 → 60.5Hz)
+        # 단, 실제 운용에서는 60.3Hz(고시 제4조 운용범위 ±0.3) 기준이 적용됨
+        # frequency_limits.json alarm_thresholds.critical_deviation_hz에서 로드
+        critical_upper: float = nominal_hz + self.FREQUENCY_CRITICAL_DEV_HZ
 
         if freq_hz < single_fault_min - db:
             severity = AlarmSeverity.CRITICAL
             threshold = single_fault_min
             direction = "하한 임계"
-        elif freq_hz > (60.0 + (normal_upper - 60.0) * 1.5) + db:
-            # 60.0 + 0.3 = 60.3 Hz 초과 시 CRITICAL
+        elif freq_hz > critical_upper + db:
+            # nominal(60.0) + critical_deviation_hz(0.5) = 60.5 Hz 초과 시 CRITICAL
             severity = AlarmSeverity.CRITICAL
-            threshold = 60.3
+            threshold = critical_upper
             direction = "상한 임계"
         elif freq_hz < normal_lower - db:
             severity = AlarmSeverity.WARNING
@@ -275,6 +315,12 @@ class AlarmDetector:
                 if alarm is not None:
                     alarms.append(alarm)
 
+        logger.info(
+            "alarm_scan_complete",
+            total_alarms=len(alarms),
+            bus_count=len(net.res_bus) if not net.res_bus.empty else 0,
+            line_count=len(net.res_line) if not net.res_line.empty else 0,
+        )
         return alarms
 
     # ------------------------------------------------------------------

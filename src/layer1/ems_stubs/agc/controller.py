@@ -8,8 +8,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pandapower as pp
+import structlog
 
 from src.shared.schemas.agc import AGCStatus
+
+logger = structlog.get_logger(__name__)
 
 
 def _utcnow() -> datetime:
@@ -119,7 +122,7 @@ class AGCController:
         # AGC 참여 발전기 조정 가능 용량 계산
         regulation_mw, participating = self._calc_regulation()
 
-        return AGCStatus(
+        status = AGCStatus(
             frequency_hz=freq_hz,
             ace_mw=ace_mw,
             model_type="tie-line bias",
@@ -127,6 +130,15 @@ class AGCController:
             participating_units=participating,
             snapshot_ts=_utcnow(),
         )
+        logger.info(
+            "agc_status_calculated",
+            frequency_hz=freq_hz,
+            ace_mw=ace_mw,
+            regulation_mw=regulation_mw,
+            participating_units=participating,
+            snapshot_ts=status.snapshot_ts.isoformat(),
+        )
+        return status
 
     def get_reserves(self) -> dict[str, float]:
         """예비력 5종 현황 반환 (고시 제6조).
@@ -159,13 +171,19 @@ class AGCController:
 
         # 예비력 배분 비율 — 표준 운영 관행 (수치는 계통 특성 상수)
         # 초속응(ESS) 5%, 1차(조속기) 20%, 2차(AGC) 30%, 3차(수동) 35%, 주파수제어 10%
-        return {
+        reserves = {
             "frequency_control_mw": round(total_headroom * 0.10, 2),
             "fast_response_mw": round(total_headroom * 0.05, 2),
             "primary_mw": round(total_headroom * 0.20, 2),
             "secondary_mw": round(total_headroom * 0.30, 2),
             "tertiary_mw": round(total_headroom * 0.35, 2),
         }
+        logger.info(
+            "agc_reserves_calculated",
+            total_headroom_mw=total_headroom,
+            reserves=reserves,
+        )
+        return reserves
 
     # ------------------------------------------------------------------
     # 내부 헬퍼
