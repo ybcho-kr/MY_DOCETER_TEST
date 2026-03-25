@@ -68,8 +68,8 @@ class ShortCircuitResult(BaseModel):
     """
 
     bus_id: int = Field(
-        ge=1,
-        description="단락 고장 발생 모선 ID.",
+        ge=0,
+        description="단락 고장 발생 모선 ID. pandapower 0-based index 사용.",
     )
     fault_type: Literal["3ph", "slg", "llg", "ll"] = Field(
         description=(

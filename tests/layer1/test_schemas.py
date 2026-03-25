@@ -1017,10 +1017,23 @@ class TestShortCircuitResult:
                 snapshot_ts=_NOW,
             )
 
-    def test_bus_id_zero_raises(self) -> None:
+    def test_bus_id_zero_valid(self) -> None:
+        """pandapower는 0-based index 사용 — bus_id=0은 유효해야 한다."""
+        # ge=0으로 수정됨: pandapower bus index는 0부터 시작
+        result = ShortCircuitResult(
+            bus_id=0,
+            fault_type="3ph",
+            ikss_ka=10.0,
+            skss_mva=5000.0,
+            snapshot_ts=_NOW,
+        )
+        assert result.bus_id == 0
+
+    def test_bus_id_negative_raises(self) -> None:
+        """bus_id 음수는 여전히 ValidationError여야 한다 (ge=0)."""
         with pytest.raises(ValidationError):
             ShortCircuitResult(
-                bus_id=0,  # ge=1 위반
+                bus_id=-1,  # ge=0 위반
                 fault_type="3ph",
                 ikss_ka=10.0,
                 skss_mva=5000.0,
