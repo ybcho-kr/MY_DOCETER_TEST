@@ -79,14 +79,17 @@ Phase 1은 최소 동작 프로토타입(MDP). 아래 3개 게이트만 통과�
 - 대규모 계통 수렴 실패 → lightsim2grid + init='results' + tolerance 조정
 
 ## Pydantic 공유 스키마 (src/shared/schemas/)
-- PowerFlowResult: {converged, violations[], bus_results[], line_results[]}
-- SEResult: {solved, bus_vm_pu[], residual, confidence_level, observable_ratio, ts}
-- ContingencyResult: {tier, contingencies:[{element, violations[], rank}]}
-- ShortCircuitResult: {fault_current_ka, affected_relays[]}
-- StudyResult: {violations[], recommendations[], requires_hitl}
-- AGCStatus: {frequency_hz, ace_mw, imbalance_mw, model_type, ts}
-- AlarmEvent: {type, severity, element_id, value, threshold, ts}
-- TopologyVersion: {version_id, changed_switches[], ts}
+> **주의**: 아래는 요약. 정확한 필드 정의는 반드시 `src/shared/schemas/*.py` 소스를 참조.
+> 이 목록과 실제 코드가 불일치하면 **소스 코드가 우선**.
+
+- **PowerFlowResult** (tp.py): converged, iterations, max_vm_pu, min_vm_pu, max_loading_pct, total_p_gen_mw, total_p_load_mw, total_loss_mw, snapshot_ts
+- **SEResult** (se.py): 상태추정 결과. src/shared/schemas/se.py 참조
+- **ContingencyResult** (tp.py): tier(1|2), contingencies[], violations[], converged_count, diverged_count, worst_voltage_pu, worst_loading_pct, snapshot_ts
+- **ShortCircuitResult** (study.py): 단락전류 결과. src/shared/schemas/study.py 참조
+- **StudyResult** (study.py): namespace='study' 고정. src/shared/schemas/study.py 참조
+- **AGCStatus** (agc.py): 주파수 제어 상태. src/shared/schemas/agc.py 참조
+- **Alarm** (alarm.py): alarm_type, severity, element_type, element_id, message, value, threshold, acknowledged, timestamp
+- **TopologyVersion** (grid.py): version, timestamp, total_buses, total_lines, total_gens, islands
 
 ## 테스트 기준
 - 한국 실계통 .raw: runpp() 수렴 성공

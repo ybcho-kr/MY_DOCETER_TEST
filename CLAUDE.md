@@ -37,7 +37,7 @@
 - N-1 기준: 단일 설비 탈락 시 나머지 위반 없어야 함 (고시 제15조)
 - 고장제거시간: 345kV 4사이클(66.7ms), 154kV 5사이클(83.3ms) (고시 제25조)
 - 예비력 5종: 주파수제어(5분), 초속응성(1초), 1차(10초), 2차(10분), 3차(30분) (고시 제6조)
-- 한국 전력 용어: docs/domain/glossary.json 참조
+- 한국 전력 용어: src/shared/domain/glossary.json 참조 (원본: docs/domain/glossary.json)
 
 ## 코드 컨벤션
 - Pydantic v2 스키마 필수 (모든 API 입출력)
@@ -107,9 +107,28 @@ ai-ems/
     └── geo/                     # GeoJSON, PMTiles
 ```
 
+## 언어 정책
+- CLAUDE.md, 설계 문서, 코드 주석, docstring: **한국어**
+- .cursorrules: 영어 (Cursor IDE 호환용)
+- 변수명, 함수명, 클래스명: **영어** (PEP 8)
+- AI 에이전트 응답 언어: **한국어** (사용자 대면)
+- git 커밋 메시지: `type(scope):` 영어 + 본문 한국어 허용
+
+## 테스트 기준
+- 단위 테스트: 모든 스키마·스텁 모듈에 test_ 파일 필수
+- 라인 커버리지 목표: ≥ 80% (pytest-cov)
+- 통합 테스트: Redis 연동, API 엔드포인트 E2E
+- 도메인 교차 검증: JSON 기준값 ↔ 스키마 validator 범위 일치
+
 ## 파일 참조
 - 설계 문서: docs/design/v51_architecture.md
 - 로드맵: docs/design/v51_roadmap.md
-- 용어 사전: docs/domain/glossary.json
-- 정량 기준: docs/domain/voltage_limits.json
+- 용어 사전 (원본): docs/domain/glossary.json
+- 용어 사전 (런타임): src/shared/domain/glossary.json
+- 정량 기준 (원본): docs/domain/voltage_limits.json
+- 정량 기준 (런타임): src/shared/domain/voltage_limits.json
+- 주파수 기준: src/shared/domain/frequency_limits.json
+- N-1 기준: src/shared/domain/n1_criteria.json
+- 열용량 기준: src/shared/domain/thermal_ratings.json
 - 설비 매핑: docs/domain/equipment_mapping.csv
+- 에이전트 역할: .claude/agents/*.md

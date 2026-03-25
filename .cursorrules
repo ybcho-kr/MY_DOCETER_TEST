@@ -1,5 +1,12 @@
 You are working on AI-EMS v5.1, an agentic AI prototype for power system EMS.
 
+LANGUAGE POLICY:
+- Code identifiers (variables, functions, classes): English (PEP 8)
+- Comments, docstrings, CLAUDE.md, design docs: Korean
+- This .cursorrules file: English (Cursor IDE compatibility)
+- AI agent responses to user: Korean
+- If CLAUDE.md and this file conflict, CLAUDE.md takes precedence.
+
 CRITICAL RULES:
 - Never generate numerical values from LLM. All numbers must come from pandapower solvers.
 - Redis ops: namespace is WRITE-PROTECTED. Only SCADA simulator writes to ops:.
