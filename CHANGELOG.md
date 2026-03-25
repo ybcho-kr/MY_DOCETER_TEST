@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Layer 2 AI 에이전트 구현 완료 (2026-03-26)**:
+  - Layer 2 오케스트레이터 + Intent 분류기 구현
+    (5개 Intent: QUERY_STATUS, ALARM_ANALYSIS, WHAT_IF_STUDY, NAVIGATE, DOMAIN_QA)
+  - 5개 하위 에이전트 구현 (NL2App, RAG, AlarmAnalysis, Study, NLNavigation)
+  - HITL Priority Queue 승인 모듈 구현 (CRITICAL/HIGH/MEDIUM/LOW 4등급)
+  - AgentContext 세션 관리 + SessionSummarizer 구현
+    (structured_facts FIFO 20건, evidence_chain 5단계 압축 금지)
+  - MCP Gateway read_only 강제 + Provenance 로그 구현
+    (ops: write 시도 HTTP 403 차단, 설계 원칙 2 완전 준수)
+  - 전체 테스트 495개 통과 (Layer 1 334개 + Layer 2 161개)
 - **Phase 1 게이트 A/B/C 전체 통과 (2026-03-26)**:
   - PSS/E v33 직접 파서 구현 (pandapower 3.x `from_psse` 제거 대응, ~700줄)
   - 한국 실계통 .raw (KEPCO 2034버스·2640버스) pandapower 수렴 성공 (게이트 A)
