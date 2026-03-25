@@ -22,9 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - EMS 스텁 통합 FastAPI 앱 (SE+TP+AGC)
   - Golden Case 검증 (편차 <1%)
 - Layer 1 테스트 207개 (전체 통과)
+- **Layer 1 2차 보강 (2026-03-25)**:
+  - SCA 단락전류 스텁 신규 구현 (IEC 60909, 3상/1선지락/선간 고장)
+  - Topology Processor 완성: Union-Find 알고리즘, Redis 연동, 이중모선 처리
+  - SCADA Simulator 보강: Switched Shunt, 3권선 변압기, 스케줄러 개선
+  - SE Bad Data Detection (BDD) 알고리즘, Pseudo-measurement 지원 추가
+  - TP PTDF/LODF 민감도 행렬 계산 구현
+  - shared/config 모듈 구현 (Redis 키 네임스페이스, API 경로 상수)
+- 전체 테스트 327개 통과, 커버리지 84%
 
 ### Changed
 - requirements.txt: pandapower>=3.0으로 업데이트
+- shared/schemas/study.py: bus_id 제약 완화 (0 허용, IEEE 14-bus 호환)
 
 ### Fixed
 - (없음)
