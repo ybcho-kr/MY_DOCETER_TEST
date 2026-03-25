@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Phase 1 게이트 A/B/C 전체 통과 (2026-03-26)**:
+  - PSS/E v33 직접 파서 구현 (pandapower 3.x `from_psse` 제거 대응, ~700줄)
+  - 한국 실계통 .raw (KEPCO 2034버스·2640버스) pandapower 수렴 성공 (게이트 A)
+  - 알람 dead-band 하드코딩 → 도메인 JSON 참조로 변경 (frequency_limits.json)
+  - AGC controller structlog 구조화 로깅 추가
+  - SCADA/Redis 파이프라인 E2E 테스트 7종 추가 (게이트 C)
+  - 전체 테스트 334개 통과, ops: write 위반 0건
 - Phase 1 MDP 초기 구조 설정
 - 공유 Pydantic v2 스키마 (grid, se, tp, agc, alarm, study, agent, common)
 - 도메인 데이터 파일 (glossary, voltage_limits, frequency_limits, thermal_ratings, n1_criteria)
