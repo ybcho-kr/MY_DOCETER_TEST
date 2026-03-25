@@ -13,6 +13,9 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from src.layer1.ems_stubs.tp.powerflow import PowerFlowEngine
+from src.layer1.ems_stubs.tp.contingency import ContingencyAnalyzer
+from src.layer1.ems_stubs.tp.vsa import VoltageStabilityAnalyzer
 from src.shared.schemas.tp import (
     ContingencyCase,
     ContingencyResult,
@@ -23,30 +26,49 @@ from src.shared.schemas.tp import (
 router = APIRouter(prefix="/tp", tags=["Topology Processing / Powerflow"])
 
 # 의존성 주입용 전역 (app.py에서 설정)
-_pf_engine = None
-_ca_analyzer = None
-_vsa_analyzer = None
+_pf_engine: PowerFlowEngine | None = None
+_ca_analyzer: ContingencyAnalyzer | None = None
+_vsa_analyzer: VoltageStabilityAnalyzer | None = None
 
 
-def get_pf_engine():
+def get_pf_engine() -> PowerFlowEngine:
+    """PowerFlowEngine 의존성.
+
+    Raises:
+        RuntimeError: 엔진이 초기화되지 않은 경우.
+    """
     if _pf_engine is None:
         raise RuntimeError("PowerFlowEngine이 초기화되지 않았습니다.")
     return _pf_engine
 
 
-def get_ca_analyzer():
+def get_ca_analyzer() -> ContingencyAnalyzer:
+    """ContingencyAnalyzer 의존성.
+
+    Raises:
+        RuntimeError: 분석기가 초기화되지 않은 경우.
+    """
     if _ca_analyzer is None:
         raise RuntimeError("ContingencyAnalyzer가 초기화되지 않았습니다.")
     return _ca_analyzer
 
 
-def get_vsa_analyzer():
+def get_vsa_analyzer() -> VoltageStabilityAnalyzer:
+    """VoltageStabilityAnalyzer 의존성.
+
+    Raises:
+        RuntimeError: 분석기가 초기화되지 않은 경우.
+    """
     if _vsa_analyzer is None:
         raise RuntimeError("VoltageStabilityAnalyzer가 초기화되지 않았습니다.")
     return _vsa_analyzer
 
 
-def set_engines(pf_engine, ca_analyzer, vsa_analyzer) -> None:
+def set_engines(
+    pf_engine: PowerFlowEngine,
+    ca_analyzer: ContingencyAnalyzer,
+    vsa_analyzer: VoltageStabilityAnalyzer,
+) -> None:
     """TP 엔진 설정 (앱 시작 시 호출)."""
     global _pf_engine, _ca_analyzer, _vsa_analyzer
     _pf_engine = pf_engine

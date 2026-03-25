@@ -1,6 +1,7 @@
 """SE(상태 추정) 스텁 테스트 — AI-EMS v5.1 Phase 1.
 
 pandapower IEEE 14-bus 기반 상태 추정기 및 라우터 검증.
+v0.2.0 추가: LNR 기반 Bad Data Detection, Pseudo-measurement 테스트.
 """
 from __future__ import annotations
 
@@ -150,3 +151,124 @@ class TestSERouter:
         assert response.status_code == 200
         data = response.json()
         assert "observable_ratio" in data
+
+    def test_se_bad_data_endpoint(self, client: TestClient) -> None:
+        """GET /se/bad_data가 200 응답을 반환해야 한다."""
+        # 먼저 SE 실행
+        client.get("/se/run")
+        response = client.get("/se/bad_data")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+
+    def test_se_bad_data_structure(self, client: TestClient) -> None:
+        """bad_data 항목이 올바른 키를 포함해야 한다."""
+        client.get("/se/run")
+        response = client.get("/se/bad_data")
+        data = response.json()
+        for item in data:
+            assert "bus_id" in item
+            assert "measurement_type" in item
+            assert "normalized_residual" in item
+            assert "threshold" in item
+
+    def test_se_pseudo_meas_endpoint(self, client: TestClient) -> None:
+        """POST /se/pseudo_meas가 200 응답을 반환해야 한다."""
+        response = client.post("/se/pseudo_meas")
+        assert response.status_code == 200
+        data = response.json()
+        assert "added_count" in data
+        assert "observable_ratio_before" in data
+        assert "observable_ratio_after" in data
+
+    def test_se_pseudo_meas_ratio_improves_or_same(self, client: TestClient) -> None:
+        """Pseudo-measurement 추가 후 관측성 비율이 같거나 향상되어야 한다."""
+        response = client.post("/se/pseudo_meas")
+        data = response.json()
+        assert data["observable_ratio_after"] >= data["observable_ratio_before"], (
+            f"관측성 비율이 악화됨: {data['observable_ratio_before']:.3f} → {data['observable_ratio_after']:.3f}"
+        )
+
+
+# ------------------------------------------------------------------
+# Bad Data Detection 단위 테스트
+# ------------------------------------------------------------------
+
+class TestBadDataDetection:
+    """LNR 기반 Bad Data Detection 테스트."""
+
+    def test_detect_bad_data_returns_list(self, estimator: StateEstimator) -> None:
+        """detect_bad_data()가 목록을 반환해야 한다."""
+        estimator.run_estimation()
+        result = estimator.detect_bad_data()
+        assert isinstance(result, list)
+
+    def test_detect_bad_data_with_normal_data(self, estimator: StateEstimator) -> None:
+        """정상 측정값에서 나쁜 데이터가 없어야 한다 (또는 있어도 구조 정확)."""
+        estimator._add_measurements_from_powerflow()
+        try:
+            import pandapower as pp
+            pp.estimation.estimate(estimator._net)
+        except Exception:
+            pass  # SE 실패해도 detect_bad_data 호출 가능
+
+        result = estimator.detect_bad_data()
+        assert isinstance(result, list)
+        # 정상 데이터이므로 bad data가 적거나 없어야 함
+        for item in result:
+            # 구조 검증
+            assert "bus_id" in item
+            assert "normalized_residual" in item
+            assert item["normalized_residual"] >= 0
+
+    def test_detect_bad_data_empty_before_run(self) -> None:
+        """SE 실행 전 detect_bad_data()는 빈 목록을 반환해야 한다."""
+        import pandapower.networks as pn
+        net = pn.case14()
+        pp.runpp(net, verbose=False)
+        est = StateEstimator(net=net)
+        result = est.detect_bad_data()
+        assert result == []
+
+
+# ------------------------------------------------------------------
+# Pseudo-measurement 단위 테스트
+# ------------------------------------------------------------------
+
+class TestPseudoMeasurement:
+    """Pseudo-measurement 자동 추가 테스트."""
+
+    def test_add_pseudo_returns_count(self, estimator: StateEstimator) -> None:
+        """add_pseudo_measurements()가 정수를 반환해야 한다."""
+        count = estimator.add_pseudo_measurements()
+        assert isinstance(count, int)
+        assert count >= 0
+
+    def test_pseudo_improves_observability(self) -> None:
+        """Pseudo-measurement 추가 후 관측성이 개선되어야 한다."""
+        import pandapower.networks as pn
+        net = pn.case14()
+        pp.runpp(net, verbose=False)
+        est = StateEstimator(net=net)
+
+        # 측정값 없는 상태에서 관측성 확인
+        obs_before = est.check_observability()
+
+        # Pseudo-measurement 추가
+        added = est.add_pseudo_measurements()
+
+        # 추가 후 관측성 확인
+        obs_after = est.check_observability()
+
+        if added > 0:
+            assert obs_after["observable_ratio"] >= obs_before["observable_ratio"], (
+                "Pseudo-measurement 추가 후 관측성 비율이 악화됨"
+            )
+
+    def test_pseudo_measurement_std_dev_larger(self) -> None:
+        """Pseudo-measurement의 std_dev가 실측값보다 커야 한다."""
+        from src.layer1.ems_stubs.se.estimator import PSEUDO_STD_DEV_V
+        # PSEUDO_STD_DEV_V는 실측 std_dev(0.01)보다 커야 함
+        assert PSEUDO_STD_DEV_V > 0.01, (
+            f"Pseudo std_dev({PSEUDO_STD_DEV_V})이 실측 std_dev(0.01)보다 작음 — 신뢰도 역전"
+        )
