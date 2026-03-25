@@ -155,12 +155,20 @@ class ScadaSimulator:
         if self._net.res_bus.empty:
             return []
 
+        import math  # noqa: PLC0415
+
         now = datetime.now(timezone.utc)
         voltages: list[BusVoltage] = []
 
         for bus_idx in self._net.res_bus.index:
             vm_pu = float(self._net.res_bus.at[bus_idx, "vm_pu"])
             vn_kv = float(self._net.bus.at[bus_idx, "vn_kv"])
+
+            # 비서비스 버스 또는 NaN 결과 건너뜀
+            # (고립 버스 비활성화 후 res_bus에 NaN이 채워질 수 있음)
+            if math.isnan(vm_pu) or math.isinf(vm_pu) or vm_pu <= 0:
+                continue
+
             name = (
                 str(self._net.bus.at[bus_idx, "name"])
                 if "name" in self._net.bus.columns
@@ -197,6 +205,8 @@ class ScadaSimulator:
         if self._net.res_line.empty:
             return []
 
+        import math  # noqa: PLC0415
+
         now = datetime.now(timezone.utc)
         loadings: list[LineLoading] = []
 
@@ -204,6 +214,11 @@ class ScadaSimulator:
             loading_pct = float(self._net.res_line.at[line_idx, "loading_percent"])
             p_from = float(self._net.res_line.at[line_idx, "p_from_mw"])
             q_from = float(self._net.res_line.at[line_idx, "q_from_mvar"])
+
+            # NaN 결과 건너뜀 (비서비스 선로 또는 고립 버스 연결 선로)
+            if math.isnan(loading_pct) or math.isnan(p_from):
+                continue
+
             from_bus = int(self._net.line.at[line_idx, "from_bus"]) + 1
             to_bus = int(self._net.line.at[line_idx, "to_bus"]) + 1
 

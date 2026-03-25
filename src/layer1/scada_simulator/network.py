@@ -5,10 +5,11 @@ Phase 2+: 한국 실계통 .raw 파일 변환 (create_network_from_raw).
 
 지원 기능:
   - IEEE 14-bus 테스트 케이스 (MDP 검증용)
-  - PSS/E .raw v30~v33 변환
+  - PSS/E .raw v29~v34 직접 파싱 (psse_parser.py)
+    pandapower 3.x에서 from_psse() 제거에 따른 자체 파서 사용
   - Switched Shunt → pandapower shunt 변환
-  - 3권선 변압기 → pandapower trafo3w 매핑
-  - 한글 bus_name UTF-8/EUC-KR 인코딩 처리
+  - 3권선 변압기 → star-equivalent 2권선 근사
+  - 한글 bus_name EUC-KR/UTF-8 인코딩 처리
 """
 from __future__ import annotations
 
@@ -18,6 +19,8 @@ from typing import Any
 
 import pandapower as pp
 import pandapower.networks as pn
+
+from src.layer1.scada_simulator.psse_parser import parse_raw_v33
 
 logger = logging.getLogger(__name__)
 
@@ -179,47 +182,42 @@ def create_network_from_raw(
 ) -> pp.pandapowerNet:
     """PSS/E .raw 파일에서 pandapower 네트워크 변환.
 
-    한국 실계통 .raw 파일(v30~v33)을 pandapower로 변환하고
-    Switched Shunt 및 3권선 변압기를 후처리한다.
+    한국 실계통 .raw 파일(v29~v34)을 pandapower로 변환한다.
+    pandapower 3.x에서 from_psse()가 제거되어 자체 파서(parse_raw_v33)를 사용.
 
     Args:
         raw_path: .raw 파일 경로 (절대 경로 권장).
-        switched_shunts: PSS/E Switched Shunt 레코드 리스트.
-            None이면 Switched Shunt 변환 생략.
+        switched_shunts: 추가 PSS/E Switched Shunt 레코드 리스트 (선택적 보완용).
+            parse_raw_v33가 .raw 내 SWITCHED SHUNT 섹션을 이미 처리하므로
+            일반적으로 None으로 충분.
             예: [{'bus': 1, 'binit': 0.5}, {'bus': 5, 'binit': -0.3}]
-        fix_encoding: True이면 bus 이름 인코딩 수정 시도.
+        fix_encoding: True이면 bus 이름 EUC-KR/UTF-8 인코딩 수정 시도.
 
     Returns:
-        pandapower 네트워크 (from_psse + 후처리 완료).
+        pandapower 네트워크 (파싱 + 후처리 완료).
 
     Raises:
         FileNotFoundError: .raw 파일이 존재하지 않을 때.
-        ValueError: 지원하지 않는 .raw 포맷 버전일 때.
         RuntimeError: pandapower 변환 중 치명적 오류 발생 시.
 
     Notes:
-        - v35 포맷은 미지원. v30~v33으로 재저장 후 사용.
-        - FACTS(SVC, STATCOM)는 정적 shunt/generator로 근사.
-        - 대규모 계통(300+버스)은 lightsim2grid 백엔드 권장.
+        - pandapower 3.x: from_psse() 제거 → psse_parser.parse_raw_v33() 사용
+        - v35 이상: v29~v34로 재저장 후 사용 권장
+        - FACTS(SVC, STATCOM)는 정적 shunt/generator로 근사
+        - 대규모 계통(300+버스)은 lightsim2grid 백엔드 권장
+        - 3권선 변압기는 star-equivalent 2권선으로 근사 (Phase 2에서 trafo3w로 교체 예정)
     """
     path = Path(raw_path)
     if not path.exists():
         raise FileNotFoundError(f".raw 파일 없음: {raw_path}")
 
-    logger.info(".raw 파일 로드 시작: %s", raw_path)
+    logger.info(".raw 파일 로드 시작: %s (pandapower 3.x 자체 파서 사용)", raw_path)
 
     try:
-        from pandapower.converter import from_psse
-        net = from_psse(str(path))
+        net = parse_raw_v33(path)
+    except (FileNotFoundError, RuntimeError):
+        raise
     except Exception as exc:
-        # v35 포맷 등 미지원 포맷 감지
-        msg = str(exc).lower()
-        if "version" in msg or "unsupported" in msg or "parse" in msg:
-            raise ValueError(
-                f"미지원 .raw 포맷: {raw_path}. "
-                "v30~v33으로 재저장 후 재시도하세요. "
-                f"원본 오류: {exc}"
-            ) from exc
         raise RuntimeError(f".raw 변환 실패: {exc}") from exc
 
     logger.info(
@@ -227,19 +225,17 @@ def create_network_from_raw(
         len(net.bus), len(net.line), len(net.trafo),
     )
 
-    # 인코딩 수정
+    # 인코딩 수정 (parse_raw_v33에서 이미 처리하지만 추가 보완)
     if fix_encoding:
         _fix_bus_name_encoding(net)
-        logger.debug("Bus 이름 인코딩 수정 완료.")
+        logger.debug("Bus 이름 인코딩 2차 수정 완료.")
 
-    # Switched Shunt 변환
+    # 추가 Switched Shunt 변환 (외부에서 명시적으로 전달된 경우)
     if switched_shunts:
         n_converted = _convert_switched_shunts(net, switched_shunts)
-        logger.info("Switched Shunt %d개 변환 완료.", n_converted)
-    else:
-        logger.debug("Switched Shunt 없음 (인수 미전달).")
+        logger.info("추가 Switched Shunt %d개 변환 완료.", n_converted)
 
-    # 3권선 변압기 검증
+    # 3권선 변압기 검증 (parse_raw_v33에서 star-equivalent로 처리)
     _validate_3w_transformers(net)
 
     return net

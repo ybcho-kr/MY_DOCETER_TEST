@@ -591,3 +591,86 @@ class TestScheduler:
             ctx.run_once()
 
         assert ctx._consecutive_failures == 3
+
+
+# ------------------------------------------------------------------
+# 한국 실계통 .raw 파일 테스트 (게이트 A + C)
+# ------------------------------------------------------------------
+
+_RAW_PATH = Path("data/psse_models/DB_2034(100%)_Basecase_P1_18.raw")
+
+
+@pytest.mark.skipif(
+    not _RAW_PATH.exists(),
+    reason=".raw 파일 없음 — data/psse_models/ 디렉토리 확인 필요",
+)
+class TestKoreanRawFile:
+    """한국 실계통 PSS/E .raw 파일 파싱 + 조류계산 수렴 테스트 (게이트 A).
+
+    data/psse_models/DB_2034(100%)_Basecase_P1_18.raw 파일이 존재할 때만 실행.
+    """
+
+    @pytest.fixture(scope="class")
+    def raw_net(self) -> pp.pandapowerNet:
+        """한국 실계통 .raw 파싱 결과 네트워크 (클래스 레벨 공유)."""
+        from src.layer1.scada_simulator.network import create_network_from_raw
+        return create_network_from_raw(str(_RAW_PATH))
+
+    @pytest.fixture(scope="class")
+    def raw_sim(self, raw_net: pp.pandapowerNet) -> ScadaSimulator:
+        """한국 실계통 SCADA 시뮬레이터 (Redis 없음)."""
+        return ScadaSimulator(net=raw_net, redis_client=None)
+
+    def test_raw_network_bus_count(self, raw_net: pp.pandapowerNet) -> None:
+        """한국 실계통 모선 수가 합리적 범위(1000+)여야 한다."""
+        assert len(raw_net.bus) >= 1000, f"모선 수 {len(raw_net.bus)}이 너무 적음"
+
+    def test_raw_network_has_ext_grid(self, raw_net: pp.pandapowerNet) -> None:
+        """슬랙 버스(ext_grid)가 존재해야 한다."""
+        assert not raw_net.ext_grid.empty, "ext_grid(슬랙 버스)가 없음"
+
+    def test_raw_powerflow_converges(self, raw_sim: ScadaSimulator) -> None:
+        """게이트 A: 한국 실계통 .raw → pandapower 조류계산 수렴해야 한다."""
+        result = raw_sim.run_powerflow()
+        assert result.converged is True, (
+            "한국 실계통 조류계산 수렴 실패 — 게이트 A 불통과"
+        )
+
+    def test_raw_voltage_range_physical(self, raw_sim: ScadaSimulator) -> None:
+        """수렴 후 전압이 물리적 범위(0.8~1.2 pu) 이내여야 한다."""
+        result = raw_sim.run_powerflow()
+        if result.converged:
+            assert result.min_vm_pu >= 0.8, f"최소전압 {result.min_vm_pu:.4f}pu가 너무 낮음"
+            assert result.max_vm_pu <= 1.2, f"최대전압 {result.max_vm_pu:.4f}pu가 너무 높음"
+
+    def test_raw_redis_publish(self, raw_net: pp.pandapowerNet) -> None:
+        """게이트 C: Redis ops: 키에 결과를 저장할 수 있어야 한다."""
+        mock_redis = MagicMock()
+        sim = ScadaSimulator(net=raw_net, redis_client=mock_redis)
+        result = sim.run_powerflow()
+        if result.converged:
+            sim.publish_to_redis(result)
+            calls = [call[0][0] for call in mock_redis.set.call_args_list]
+            bus_keys = [k for k in calls if k.startswith("ops:bus:")]
+            line_keys = [k for k in calls if k.startswith("ops:line:")]
+            assert len(bus_keys) > 0, "ops:bus:* 키가 저장되지 않음"
+            assert len(line_keys) > 0, "ops:line:* 키가 저장되지 않음"
+            assert "ops:powerflow:latest" in calls
+            assert "ops:powerflow:status" in calls
+
+    def test_raw_no_nan_in_bus_voltages(self, raw_sim: ScadaSimulator) -> None:
+        """수렴 후 BusVoltage 결과에 NaN이 없어야 한다."""
+        import math
+        result = raw_sim.run_powerflow()
+        if result.converged:
+            voltages = raw_sim.get_bus_voltages()
+            for bv in voltages:
+                assert not math.isnan(bv.voltage_pu), (
+                    f"Bus {bv.bus_id}: voltage_pu가 NaN"
+                )
+                assert bv.voltage_pu > 0, f"Bus {bv.bus_id}: voltage_pu={bv.voltage_pu}가 양수 아님"
+
+    def test_raw_snapshot_ts_present(self, raw_sim: ScadaSimulator) -> None:
+        """PowerFlowResult에 snapshot_ts가 포함되어야 한다."""
+        result = raw_sim.run_powerflow()
+        assert result.snapshot_ts is not None
