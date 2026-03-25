@@ -1,0 +1,58 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-03-25",
+  "description": "AI-EMS v5.1 N-1 상정고장 판단기준 — 산업통상자원부고시 제2023-65호 제15조",
+  "reference": "산업통상자원부고시 제2023-65호 제15조",
+
+  "n1_definition": {
+    "description": "단일 설비 탈락 시 나머지 설비 운용범위 위반 없음",
+    "applicable_voltage_kv": [345, 154],
+    "elements": ["line", "transformer", "generator", "bus_section"],
+    "reference": "고시 제15조"
+  },
+  "violation_criteria": {
+    "voltage": {
+      "description": "N-1 후 전압 위반 판정 기준",
+      "use_operating_range": true,
+      "limits": {
+        "345kV": {"min_pu": 0.90, "max_pu": 1.10},
+        "154kV": {"min_pu": 0.90, "max_pu": 1.10},
+        "66kV": {"min_pu": 0.90, "max_pu": 1.10}
+      }
+    },
+    "thermal": {
+      "description": "N-1 후 열용량 위반 판정 기준",
+      "use_emergency_rating": true,
+      "max_loading_pct": 110.0,
+      "rating_type": "ste"
+    },
+    "frequency": {
+      "description": "단일 발전기 탈락 시 주파수 판정 기준",
+      "min_hz": 59.7
+    }
+  },
+  "n2_definition": {
+    "description": "이중 고장 시 광역정전 방지 — 345kV 계통에 적용",
+    "applicable_voltage_kv": [345],
+    "reference": "고시 제15조"
+  },
+  "contingency_tiers": {
+    "tier_1": {
+      "description": "실시간 N-1 감시 — 전체 345kV/154kV 설비",
+      "scan_interval_sec": 60,
+      "auto_screening": true
+    },
+    "tier_2": {
+      "description": "정밀 분석 — Tier 1 위반 발견 시",
+      "includes_remedial_action": true,
+      "includes_voltage_stability": true
+    }
+  },
+  "severity_classification": {
+    "none": {"description": "위반 없음", "color": "#22c55e"},
+    "watch": {"description": "margin < 10%", "color": "#f59e0b"},
+    "warning": {"description": "margin < 5%", "color": "#f97316"},
+    "violation": {"description": "기준 초과", "color": "#ef4444"},
+    "diverged": {"description": "조류계산 발산", "color": "#7c3aed"}
+  }
+}

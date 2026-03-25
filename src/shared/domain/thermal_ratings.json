@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-03-25",
+  "description": "AI-EMS v5.1 송전선로 열용량 기준 템플릿",
+  "reference": "한전 송변전설비 운영기준",
+
+  "rating_types": {
+    "normal": {"description": "상시 열용량 (continuous rating)", "season_dependent": true},
+    "lte": {"description": "장기간과부하 (Long-Term Emergency, 4시간)", "multiplier": 1.10},
+    "ste": {"description": "단기간과부하 (Short-Term Emergency, 15분)", "multiplier": 1.25},
+    "dal": {"description": "폐기부하한도 (Disconnection of Anticipated Load)", "multiplier": 1.40}
+  },
+  "seasonal_factors": {
+    "summer": {"months": [6,7,8], "ambient_temp_c": 40, "factor": 1.00, "description": "하절기 (기준)"},
+    "winter": {"months": [12,1,2], "ambient_temp_c": 0, "factor": 1.20, "description": "동절기"},
+    "spring_fall": {"months": [3,4,5,9,10,11], "ambient_temp_c": 20, "factor": 1.10, "description": "춘추절기"}
+  },
+  "conductor_templates": {
+    "ACSR_410": {
+      "name": "ACSR 410mm²",
+      "voltage_kv": 154,
+      "normal_summer_mva": 195,
+      "normal_winter_mva": 234,
+      "description": "154kV 표준 도체"
+    },
+    "ACSR_810": {
+      "name": "ACSR 810mm²",
+      "voltage_kv": 345,
+      "normal_summer_mva": 780,
+      "normal_winter_mva": 936,
+      "description": "345kV 표준 도체 (2도체)"
+    },
+    "ACSR_240": {
+      "name": "ACSR 240mm²",
+      "voltage_kv": 66,
+      "normal_summer_mva": 85,
+      "normal_winter_mva": 102,
+      "description": "66kV 표준 도체"
+    }
+  },
+  "alarm_thresholds": {
+    "warning_pct": 80.0,
+    "critical_pct": 100.0,
+    "deadband_pct": 2.0,
+    "description": "부하율 기반 알람 임계값"
+  }
+}
